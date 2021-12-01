@@ -132,6 +132,7 @@ void Follow_single(char f, map<char, set<char> > &Follow, map<char, list<Cfg_rul
                 }
                 else
                 {
+                    // of the form A --> αBβ ; Now calculating first of β
 
                     bool only_epsilon = true;
 
@@ -142,6 +143,8 @@ void Follow_single(char f, map<char, set<char> > &Follow, map<char, list<Cfg_rul
 
                     if (only_epsilon == true)
                     {
+
+                        // if only_epsilon == True --> means, the first of (β) contains only ε, i.e the grammar is of the form A --> αBβ where first of 'β' is 'e' or 'ε' or Epsilon
 
                         if (node1.root != f)
                         {
@@ -155,6 +158,7 @@ void Follow_single(char f, map<char, set<char> > &Follow, map<char, list<Cfg_rul
 
                     else
                     {
+                        // if only_epsilon == False --> means, the first of (β) contains more than only ε, i.e the grammar is of the form of the form A --> αBβ
 
                         for (auto node2 : First_single(node1.leaf[pos + 1], rules, terminals, non_terminals))
                         {
@@ -170,9 +174,9 @@ void Follow_single(char f, map<char, set<char> > &Follow, map<char, list<Cfg_rul
 
 map<char, set<char> > Follow_all(char start_node, map<char, list<Cfg_rule> > &rules, set<char> &terminals, set<char> &non_terminals)
 {
-    map<char, set<char> > Follow;
+    map<char, set<char> > Follow; // the Follow map
 
-    Follow[start_node].insert('$');
+    Follow[start_node].insert('$'); // Inserting '$' for the start node
 
     Follow_single(start_node, Follow, rules, terminals, non_terminals);
 
@@ -182,28 +186,48 @@ map<char, set<char> > Follow_all(char start_node, map<char, list<Cfg_rule> > &ru
             Follow_single(node, Follow, rules, terminals, non_terminals);
     }
 
+    /*
+    ## Make the return of the fuction void and remove all the lines below this comment to see previous version of Applicaton
+    for(auto node : Follow) // Printing all the Follow's
+    {
+        cout<<"FOLLOW ( " << node.first <<" ) : { ";
+        for(auto node1 : node.second)
+        {
+            cout<<node1<<", ";
+        }
+        cout<<"}"<<endl;
+    }
+    */
+
     return Follow;
 }
 
 map<char, map<char, Cfg_rule> > LL1_Parsing_Table_Construct(map<char, list<Cfg_rule> > &rules, map<char, set<char> > &First, map<char, set<char> > &Follow, set<char> &non_terminals, set<char> &terminals)
 {
+    // Columns : Consists of all terminals and '$'
+
+    // Rows : Consists of all non-terminals
+
+    // No element will be present for error parser
 
     map<char, map<char, Cfg_rule> > LL1_Parser_Table;
 
     for (auto rule : rules)
     {
-        for (auto rule1 : rule.second)
+        for (auto rule1 : rule.second) // traversing all the rules
         {
+            // Consider Rule/Production of the form A --> α
 
             char alpha = rule1.leaf[0];
 
-            if (alpha != 'e')
+            if (alpha != 'e') // alpha is not equal to 'Epsilon' or 'e'
             {
 
                 for (auto node : First[alpha])
                 {
                     if (node != 'e')
                     {
+                        // STEP 1 : Add A --> α to M[A,a] where a belongs to FIRST(α)
 
                         LL1_Parser_Table[rule1.root][node] = rule1;
                     }
@@ -211,6 +235,7 @@ map<char, map<char, Cfg_rule> > LL1_Parsing_Table_Construct(map<char, list<Cfg_r
                     {
                         for (auto node1 : Follow[rule1.root])
                         {
+                            // STEP 2 : Add A --> α to M[A,b] where b belongs to FOLLOW(A)
 
                             LL1_Parser_Table[rule1.root][node1] = rule1;
                         }
@@ -222,6 +247,7 @@ map<char, map<char, Cfg_rule> > LL1_Parsing_Table_Construct(map<char, list<Cfg_r
             {
                 for (auto node1 : Follow[rule1.root])
                 {
+                    // STEP 2 : Add A --> α to M[A,b] where b belongs to FOLLOW(A)
 
                     LL1_Parser_Table[rule1.root][node1] = rule1;
                 }
@@ -253,13 +279,13 @@ bool LL1_Parse(string test, char start_node, map<char, map<char, Cfg_rule> > LL1
     S.push('$');
     S.push(start_node);
 
-    int pos = 0;
+    int pos = 0; // pointer for test string
 
     test[test.size()] = '$';
 
     while (S.top() != '$')
     {
-        if (S.top() == test[pos])
+        if (S.top() == test[pos]) // if a Match is found
         {
             cout << "Match for " << test[pos];
             pos++;
@@ -272,7 +298,7 @@ bool LL1_Parse(string test, char start_node, map<char, map<char, Cfg_rule> > LL1
             {
                 if (LL1_Parser[S.top()].count(test[pos]))
                 {
-
+                    // Check M [ S.top() , test[pos] ] and and enter the value into the stack
                     cout << "Check cell M [ " << S.top() << " , " << test[pos] << " ] and replace ";
                     Cfg_rule rule = LL1_Parser[S.top()][test[pos]];
                     S.pop();
@@ -288,116 +314,124 @@ bool LL1_Parse(string test, char start_node, map<char, map<char, Cfg_rule> > LL1
                 else
                 {
                     cout << "No cell found for M [ " << S.top() << " , " << test[pos] << " ] and Hence returning Erorr !!";
-                    break;
-                }
-                else
-                {
-                    cout << "No cell found for M [ " << S.top() << " , " << test[pos] << " ] and Hence returning Erorr !!";
-                    break;
+                    break; // No match found
                 }
             }
-
-            cout << endl;
+            else
+            {
+                cout << "No cell found for M [ " << S.top() << " , " << test[pos] << " ] and Hence returning Erorr !!";
+                break; // No match found
+            }
         }
 
-        if (S.top() == '$' && test[pos] == '$')
-            return true;
-
-        return false;
+        cout << endl;
     }
 
-    int main()
-    {
-        cout << "Enter number of test cases : ";
-        int t;
-        cin >> t;
+    // if the Stack has '$' and the test string has ended with '\0' the string is accepted
+    if (S.top() == '$' && test[pos] == '$')
+        return true;
 
-        while (t--)
+    return false;
+}
+
+int main()
+{
+    cout << "Enter number of test cases : ";
+    int t; // test cases
+    cin >> t;
+
+    while (t--) // starts from t-1 to 0 ( t times )
+    {
+
+        cout << endl
+             << "Enter the number of grammar rules : ";
+        int nr; // nr : number of grammer rules
+
+        cin >> nr;
+
+        map<char, list<Cfg_rule> > rules; // a map to store all rules ; key : a non-terminal character ; Value : a list of Cfg_rule objects
+
+        set<char> terminals; // a vector to store terminals
+
+        set<char> non_terminals; // a vector to store non-terminals
+
+        cout << endl
+             << "\"Note : '$' is reserved; 'e' is reserved as Epsilon; 'i' is reserved for 'id'; 'n' is reserved for 'num'; 'x' is reserved for '*'\"\n\nStart Entering the Grammar Rules one-by-one in fromat \"S ABC\" which stands for \"S -> ABC\" :" << endl;
+
+        for (int i = 0; i < nr; i++)
         {
 
-            cout << endl
-                 << "Enter the number of grammar rules : ";
-            int nr;
+            Cfg_rule node; // Creating the rule object
 
-            cin >> nr;
+            cin >> node.root; // Input the root Non-Terminal Node
 
-            map<char, list<Cfg_rule> > rules;
-            set<char> terminals;
+            if (non_terminals.count(node.root) == 0)
+                non_terminals.insert(node.root); // assuming 'S' stands for stard and 'ϵ' stands for epsilon
 
-            set<char> non_terminals;
+            string leafs; // Input the leaf nodes
+            cin >> leafs;
 
-            cout << endl
-                 <<
-
-                for (int i = 0; i < nr; i++)
+            for (int i = 0; leafs[i] != '\0'; i++)
             {
-
-                Cfg_rule node;
-
-                cin >> node.root;
-
-                if (non_terminals.count(node.root) == 0)
-                    non_terminals.insert(node.root);
-
-                string leafs;
-                cin >> leafs;
-
-                for (int i = 0; leafs[i] != '\0'; i++)
+                if (leafs[i] == 'e')
                 {
-                    if (leafs[i] == 'e')
-                    {
-                    }
-
-                    else if (isupper(leafs[i]))
-                    {
-                        if (non_terminals.count(leafs[i]) == 0)
-                            non_terminals.insert(leafs[i]);
-                    }
-
-                    else if (islower(leafs[i]))
-                    {
-                        if (terminals.count(leafs[i]) == 0)
-                            terminals.insert(leafs[i]);
-                    }
-
-                    node.leaf.push_back(leafs[i]);
+                    // do nothing
                 }
 
-                rules[node.root].push_back(node);
+                else if (isupper(leafs[i]))
+                {
+                    if (non_terminals.count(leafs[i]) == 0)
+                        non_terminals.insert(leafs[i]);
+                }
+
+                else if (islower(leafs[i]))
+                {
+                    if (terminals.count(leafs[i]) == 0)
+                        terminals.insert(leafs[i]);
+                }
+
+                node.leaf.push_back(leafs[i]);
             }
 
-            cout << endl
-                 << "Enter the Starting Node : ";
-            char start_node;
-            cin >> start_node;
-            cout << endl;
+            // made the node object
 
-            map<char, set<char> > First = First_all(rules, terminals, non_terminals);
+            // now enter the object into the map
 
-            map<char, set<char> > Follow = Follow_all(start_node, rules, terminals, non_terminals);
-
-            map<char, map<char, Cfg_rule> > LL1_Parsing_Table = LL1_Parsing_Table_Construct(rules, First, Follow, non_terminals, terminals);
-
-            Display_Parsing_Table_Construct(LL1_Parsing_Table);
-
-            fflush(stdin);
-            string to_parse;
-            cout << endl
-                 << "Enter the Test statement to pass through the LL1 Parser : ";
-            cin >> to_parse;
-
-            cout << endl;
-            if (LL1_Parse(to_parse, start_node, LL1_Parsing_Table))
-                cout << endl
-                     << endl
-                     << "String Accepted : No Syntax Error" << endl;
-            else
-                cout << endl
-                     << endl
-                     << "String Un-accepted : Syntax error is Present" << endl;
+            rules[node.root].push_back(node);
         }
 
         cout << endl
-             << endl;
-        return 0;
+             << "Enter the Starting Node : ";
+        char start_node;
+        cin >> start_node; // start_node is the start for the grammar
+        cout << endl;
+
+        map<char, set<char> > First = First_all(rules, terminals, non_terminals); // Calculates all the First's
+
+        map<char, set<char> > Follow = Follow_all(start_node, rules, terminals, non_terminals); // Calculates all the Follow's
+
+        map<char, map<char, Cfg_rule> > LL1_Parsing_Table = LL1_Parsing_Table_Construct(rules, First, Follow, non_terminals, terminals); // A Double map to store the parsing table
+
+        Display_Parsing_Table_Construct(LL1_Parsing_Table);
+
+        fflush(stdin);
+        string to_parse;
+        cout << endl
+             << "Enter the Test statement to pass through the LL1 Parser : ";
+        cin >> to_parse;
+
+        cout << endl;
+        if (LL1_Parse(to_parse, start_node, LL1_Parsing_Table))
+            cout << endl
+                 << endl
+                 << "String Accepted : No Syntax Error" << endl;
+        else
+            cout << endl
+                 << endl
+                 << "String Un-accepted : Syntax error is Present" << endl;
     }
+
+    cout << endl
+         << endl;
+    return 0;
+}
